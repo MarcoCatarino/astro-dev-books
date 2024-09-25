@@ -1,0 +1,74 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import BookScore from "../../components/BookScore.astro";
+import BuyButton from "../../components/BuyButton.astro";
+
+import { SHOW_BUY_BUTTON } from "astro:env/server"; // <!-- TODO:Esto es desde el lado del servidor -->
+
+
+import { getCollection, render } from "astro:content";
+export async function getStaticPaths() {
+    const books = await getCollection('books')
+
+    return books.map((book) => ({
+        params: { id: book.slug },
+        props: { book },
+    }))
+}
+
+const { book } = Astro.props;
+const { data, slug } = book
+const { title, author, img, readtime, description, buy} = data
+
+const { Content } = await render(book)
+
+//* This is used when we are with server islands [astro.config.mjs => output: 'server']
+//* This is in order to do THIS PAGE (libro/[id].astro) STATIC
+export const prerender = true 
+---
+
+<Layout title= {`${title} ~ Dev Books`}>
+    <div class="flex gap-12">
+        <aside class="flex flex-col items-center gap-4">
+            <a href="/" class="hover:underline opacity-70">⬅️ Volver a atras</a>
+            <img 										
+                transition:name={`img-${slug}`}
+                class="rounded w-72 h-auto" 
+                src={`/${img}`} 
+                alt={ title }
+            />
+            
+            <!-- * Para las Dinamic Island [server:defer] && astro.config.mjs * -->
+            <BookScore server:defer id={slug}>
+                <span slot="fallback" class="text-xs opacity-70">Cargando puntuacion</span>    
+            </BookScore> 
+            
+            {
+                SHOW_BUY_BUTTON && <BuyButton server:defer buy= { buy } />
+            }
+        </aside>
+
+        <main class="max-w-3xl">
+            <h1 transition:name={`title-${slug}`} class="text-4xl font-bold mb-4">{title}</h1>
+            <div class="prose prose-invert">
+                <Content />
+            </div>
+        </main>
+    </div>
+</Layout>
+
+<!-- TODO: Esto es desde el lado del cliente (Se ejecuta desde el cliente) -->
+<!-- ? Esto da tirones, asi que es mejor usar los Server Island [Components/BookScore] -->
+<!-- <script> 
+    import { SCORE_API_ENDPOINT } from "astro:env/client";
+
+    const scoreElement = document.querySelector('#score')
+
+    fetch(SCORE_API_ENDPOINT)
+        .then(res => res.text())
+        .then(scoreValue => {
+            if (scoreElement) {
+                scoreElement.innerHTML = `⭐ Puntuacion: ${scoreValue.trim()}/5`
+            }
+        }) 
+</script> -->
